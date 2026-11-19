@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Desk">
+<meta name="theme-color" content="#0b0f14">
+<title>Desk Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0b0f14; color: #e8eef5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  body { overflow: hidden; }
+  .wrap { display: grid; height: 100vh; padding: 16px; grid-gap: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right));
+    grid-template-columns: 1.15fr 1fr 1.25fr; grid-template-rows: 1.15fr 1fr;
+    grid-template-areas: "clock weather news" "cal weather news"; transition: filter 1.5s; }
+  body.night .wrap { filter: brightness(0.38); }
+  .card { background: #121821; border: 1px solid #1d2733; border-radius: 18px; padding: 18px 22px; min-height: 0; overflow: hidden; position: relative; }
+  .label { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #7d8a99; margin-bottom: 8px; }
+  #clock { grid-area: clock; display: flex; flex-direction: column; justify-content: space-between; }
+  #weather { grid-area: weather; display: flex; flex-direction: column; }
+  #cal { grid-area: cal; display: flex; flex-direction: column; }
+  #news { grid-area: news; display: flex; flex-direction: column; }
+
+  .main-time { font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.02em;
+    font-size: 11vw; font-size: clamp(56px, 10vw, 170px); }
+  .main-time .sec { font-size: 0.36em; color: #7d8a99; margin-left: 0.12em; letter-spacing: 0; }
+  .main-date { font-size: 18px; font-size: clamp(15px, 1.6vw, 26px); color: #b9c4d1; margin-top: 6px; }
+  .main-sub { font-size: 13px; color: #7d8a99; margin-top: 4px; }
+  .zones { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 14px; margin-top: 14px; }
+  .zone { border-top: 1px solid #1d2733; padding-top: 12px; }
+  .zone .z-name { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #7d8a99; }
+  .zone .z-time { font-size: 30px; font-size: clamp(24px, 3.4vw, 54px); font-weight: 300; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .zone .z-meta { font-size: 13px; color: #7d8a99; margin-top: 2px; }
+
+  .w-now { display: flex; align-items: center; }
+  .w-icon { font-size: 64px; font-size: clamp(48px, 5.5vw, 96px); line-height: 1; margin-right: 16px; }
+  .w-temp { font-size: 56px; font-size: clamp(44px, 5vw, 88px); font-weight: 200; line-height: 1; }
+  .w-desc { font-size: 17px; color: #b9c4d1; margin-top: 4px; }
+  .w-meta { font-size: 13px; color: #7d8a99; margin-top: 10px; line-height: 1.6; }
+  .w-days { margin-top: 14px; border-top: 1px solid #1d2733; flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+  .w-day { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 16px; }
+  .w-day .d { width: 56px; color: #b9c4d1; }
+  .w-day .i { width: 40px; font-size: 24px; text-align: center; }
+  .w-day .p { width: 56px; color: #6fa8dc; font-size: 13px; text-align: right; }
+  .w-day .t { width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+  .w-day .t span { color: #7d8a99; }
+
+  .cal-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .cal-title { font-size: 20px; font-weight: 500; }
+  .cal-week { font-size: 13px; color: #7d8a99; }
+  table.cal { width: 100%; border-collapse: collapse; margin-top: 8px; flex: 1; table-layout: fixed; }
+  table.cal th { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: #7d8a99; text-align: center; padding: 2px 0 6px; }
+  table.cal td { text-align: center; font-size: 15px; font-size: clamp(13px, 1.3vw, 20px); color: #b9c4d1; font-variant-numeric: tabular-nums; }
+  table.cal td.wk, table.cal th.wk { color: #4a5666; font-size: 11px; }
+  table.cal td.dim { color: #3a4553; }
+  table.cal td.wknd { color: #8593a3; }
+  table.cal td.today span { display: inline-block; min-width: 1.9em; line-height: 1.9em; border-radius: 50%; background: #f5b942; color: #0b0f14; font-weight: 700; }
+
+  .tabs { display: flex; margin-bottom: 8px; }
+  .tab { font-size: 13px; padding: 6px 14px; margin-right: 8px; border-radius: 999px; border: 1px solid #1d2733; color: #9aa7b6; cursor: pointer; }
+  .tab.on { background: #bb1919; border-color: #bb1919; color: #fff; }
+  .news-list { flex: 1; overflow: hidden; }
+  .item { display: block; padding: 10px 0; border-top: 1px solid #1d2733; color: inherit; text-decoration: none; }
+  .item:first-child { border-top: 0; padding-top: 2px; }
+  .item .h { font-size: 17px; font-size: clamp(15px, 1.5vw, 22px); font-weight: 600; line-height: 1.25; }
+  .item .s { font-size: 13px; color: #8d99a8; margin-top: 3px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .item .a { font-size: 11px; color: #5d6a7a; margin-top: 3px; }
+  .status { font-size: 11px; color: #4a5666; margin-top: 8px; }
+  .err { color: #d98b6a; }
+
+  @media (max-aspect-ratio: 1/1) {
+    body { overflow: auto; }
+    .wrap { height: auto; min-height: 100vh; grid-template-columns: 1fr 1fr; grid-template-rows: auto;
+      grid-template-areas: "clock clock" "weather cal" "news news"; }
+    .main-time { font-size: 20vw; }
+    .item .h { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <section class="card" id="clock">
+    <div>
+      <div class="label" id="homeLabel">UK</div>
+      <div class="main-time" id="mainTime">--:--</div>
+      <div class="main-date" id="mainDate"></div>
+      <div class="main-sub" id="mainSub"></div>
+    </div>
+    <div class="zones" id="zones"></div>
+  </section>
+
+  <section class="card" id="weather">
+    <div class="label" id="wLabel">Weather</div>
+    <div id="wBody"><div class="main-sub">Loading weather&hellip;</div></div>
+  </section>
+
+  <section class="card" id="cal">
+    <div class="cal-head"><div class="cal-title" id="calTitle"></div><div class="cal-week" id="calWeek"></div></div>
+    <div id="calBody" style="flex:1;display:flex;flex-direction:column"></div>
+  </section>
+
+  <section class="card" id="news">
+    <div class="label">BBC News</div>
+    <div class="tabs" id="tabs"></div>
+    <div class="news-list" id="newsList"><div class="main-sub">Loading headlines&hellip;</div></div>
+    <div class="status" id="status"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Settings: edit these ---------- */
+  var CONFIG = {
+    home:  { label: 'UK \u00b7 Exning', tz: 'Europe/London', lat: 52.2775, lon: 0.3711 },
+    zones: [
+      { label: 'CET \u00b7 Paris',  tz: 'Europe/Paris' },
+      { label: 'Casablanca',        tz: 'Africa/Casablanca', fixedUtc: 0 }  // Morocco went to permanent UTC+0 on 20 Sep 2026; pinned so old tablets with stale time-zone data stay right
+    ],
+    feeds: [
+      { name: 'Top stories', url: 'https://feeds.bbci.co.uk/news/rss.xml' },
+      { name: 'UK',          url: 'https://feeds.bbci.co.uk/news/uk/rss.xml' },
+      { name: 'Business',    url: 'https://feeds.bbci.co.uk/news/business/rss.xml' },
+      { name: 'Technology',  url: 'https://feeds.bbci.co.uk/news/technology/rss.xml' }
+    ],
+    maxHeadlines: 7,
+    weatherEveryMin: 30,
+    newsEveryMin: 10,
+    nightFromHour: 22,   // screen dims from this hour (home time)...
+    nightToHour: 6       // ...until this hour
+  };
+  /* ------------------------------------------ */
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  /* ---------- time helpers ---------- */
+  var fmtCache = {};
+  function parts(tz, d) {
+    var f = fmtCache[tz] || (fmtCache[tz] = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz, hour12: false, year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric' }));
+    var o = {};
+    f.formatToParts(d).forEach(function (p) { o[p.type] = p.value; });
+    return { y: +o.year, m: +o.month, d: +o.day, h: (+o.hour) % 24, mi: +o.minute, s: +o.second };
+  }
+  function zoneParts(z, d) {
+    if (typeof z.fixedUtc === 'number') {
+      var x = new Date(d.getTime() + z.fixedUtc * 3600000);
+      return { y: x.getUTCFullYear(), m: x.getUTCMonth() + 1, d: x.getUTCDate(), h: x.getUTCHours(), mi: x.getUTCMinutes(), s: x.getUTCSeconds() };
+    }
+    return parts(z.tz, d);
+  }
+  function zoneDate(z, d, opts) {
+    if (typeof z.fixedUtc === 'number') return new Date(d.getTime() + z.fixedUtc * 3600000).toLocaleDateString('en-GB', Object.assign({ timeZone: 'UTC' }, opts));
+    return dateLabel(z.tz, d, opts);
+  }
+  function wallMs(p) { return Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s); }
+  function dateLabel(tz, d, opts) { return d.toLocaleDateString('en-GB', Object.assign({ timeZone: tz }, opts)); }
+  function isoWeek(y, m, d) {
+    var dt = new Date(Date.UTC(y, m - 1, d));
+    var dayNum = dt.getUTCDay() || 7;
+    dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+    var yStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+    return Math.ceil(((dt - yStart) / 86400000 + 1) / 7);
+  }
+
+  /* ---------- clocks ---------- */
+  $('homeLabel').textContent = CONFIG.home.label;
+  $('zones').innerHTML = CONFIG.zones.map(function (z, i) {
+    return '<div class="zone"><div class="z-name">' + esc(z.label) + '</div><div class="z-time" id="zt' + i + '">--:--</div><div class="z-meta" id="zm' + i + '"></div></div>';
+  }).join('');
+
+  var lastDayKey = '';
+  function tick() {
+    var now = new Date();
+    var h = parts(CONFIG.home.tz, now);
+    $('mainTime').innerHTML = pad(h.h) + ':' + pad(h.mi) + '<span class="sec">' + pad(h.s) + '</span>';
+    var dayKey = h.y + '-' + h.m + '-' + h.d;
+    if (dayKey !== lastDayKey) {
+      lastDayKey = dayKey;
+      $('mainDate').textContent = dateLabel(CONFIG.home.tz, now, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      $('mainSub').textContent = 'Week ' + isoWeek(h.y, h.m, h.d);
+      renderCalendar(h);
+    }
+    var homeWall = wallMs(h);
+    CONFIG.zones.forEach(function (z, i) {
+      var p = zoneParts(z, now);
+      $('zt' + i).textContent = pad(p.h) + ':' + pad(p.mi);
+      var diff = Math.round((wallMs(p) - homeWall) / 3600000);
+      var rel = diff === 0 ? 'same as UK' : (diff > 0 ? '+' + diff + 'h' : diff + 'h') + ' vs UK';
+      var day = zoneDate(z, now, { weekday: 'short', day: 'numeric', month: 'short' });
+      $('zm' + i).textContent = day + ' \u00b7 ' + rel;
+    });
+    var night = CONFIG.nightFromHour > CONFIG.nightToHour
+      ? (h.h >= CONFIG.nightFromHour || h.h < CONFIG.nightToHour)
+      : (h.h >= CONFIG.nightFromHour && h.h < CONFIG.nightToHour);
+    document.body.className = night ? 'night' : '';
+    // Fresh start each night keeps a long-running tablet tidy
+    if (h.h === 3 && h.mi === 0 && h.s === 0) { try { location.reload(); } catch (e) {} }
+  }
+
+  /* ---------- calendar ---------- */
+  function renderCalendar(h) {
+    var first = new Date(Date.UTC(h.y, h.m - 1, 1));
+    var lead = (first.getUTCDay() + 6) % 7;
+    var daysIn = new Date(Date.UTC(h.y, h.m, 0)).getUTCDate();
+    var rows = Math.ceil((lead + daysIn) / 7);
+    $('calTitle').textContent = first.toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+    $('calWeek').textContent = 'Today is week ' + isoWeek(h.y, h.m, h.d);
+    var html = '<table class="cal"><thead><tr><th class="wk">Wk</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead><tbody>';
+    for (var r = 0; r < rows; r++) {
+      var mon = new Date(Date.UTC(h.y, h.m - 1, 1 - lead + 7 * r));
+      html += '<tr><td class="wk">' + isoWeek(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate()) + '</td>';
+      for (var c = 0; c < 7; c++) {
+        var dt = new Date(Date.UTC(h.y, h.m - 1, 1 - lead + 7 * r + c));
+        var inMonth = dt.getUTCMonth() === h.m - 1;
+        var isToday = inMonth && dt.getUTCDate() === h.d;
+        var cls = (!inMonth ? 'dim' : '') + (c >= 5 && inMonth ? ' wknd' : '') + (isToday ? ' today' : '');
+        html += '<td class="' + cls + '"><span>' + dt.getUTCDate() + '</span></td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    $('calBody').innerHTML = html;
+  }
+
+  /* ---------- network helper ---------- */
+  function getJson(url, ms) {
+    return new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { reject(new Error('timeout')); }, ms || 12000);
+      fetch(url).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (j) { clearTimeout(t); resolve(j); }, function (e) { clearTimeout(t); reject(e); });
+    });
+  }
+  function getText(url, ms) {
+    return new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { reject(new Error('timeout')); }, ms || 12000);
+      fetch(url).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }).then(function (x) { clearTimeout(t); resolve(x); }, function (e) { clearTimeout(t); reject(e); });
+    });
+  }
+  function stamp() { var p = parts(CONFIG.home.tz, new Date()); return pad(p.h) + ':' + pad(p.mi); }
+
+  /* ---------- weather (Open-Meteo, free, no key) ---------- */
+  var WX = {
+    0: ['Clear', '\u2600\uFE0F'], 1: ['Mainly clear', '\uD83C\uDF24\uFE0F'], 2: ['Partly cloudy', '\u26C5'], 3: ['Overcast', '\u2601\uFE0F'],
+    45: ['Fog', '\uD83C\uDF2B\uFE0F'], 48: ['Rime fog', '\uD83C\uDF2B\uFE0F'],
+    51: ['Light drizzle', '\uD83C\uDF26\uFE0F'], 53: ['Drizzle', '\uD83C\uDF26\uFE0F'], 55: ['Heavy drizzle', '\uD83C\uDF27\uFE0F'],
+    56: ['Freezing drizzle', '\uD83C\uDF27\uFE0F'], 57: ['Freezing drizzle', '\uD83C\uDF27\uFE0F'],
+    61: ['Light rain', '\uD83C\uDF26\uFE0F'], 63: ['Rain', '\uD83C\uDF27\uFE0F'], 65: ['Heavy rain', '\uD83C\uDF27\uFE0F'],
+    66: ['Freezing rain', '\uD83C\uDF27\uFE0F'], 67: ['Freezing rain', '\uD83C\uDF27\uFE0F'],
+    71: ['Light snow', '\uD83C\uDF28\uFE0F'], 73: ['Snow', '\u2744\uFE0F'], 75: ['Heavy snow', '\u2744\uFE0F'], 77: ['Snow grains', '\u2744\uFE0F'],
+    80: ['Light showers', '\uD83C\uDF26\uFE0F'], 81: ['Showers', '\uD83C\uDF27\uFE0F'], 82: ['Violent showers', '\uD83C\uDF27\uFE0F'],
+    85: ['Snow showers', '\uD83C\uDF28\uFE0F'], 86: ['Heavy snow showers', '\uD83C\uDF28\uFE0F'],
+    95: ['Thunderstorm', '\u26C8\uFE0F'], 96: ['Thunderstorm, hail', '\u26C8\uFE0F'], 99: ['Thunderstorm, hail', '\u26C8\uFE0F']
+  };
+  function wx(code, isDay) {
+    var w = WX[code] || ['\u2014', '\u2753'];
+    var icon = w[1];
+    if (!isDay && (code === 0 || code === 1)) icon = '\uD83C\uDF19';
+    return { text: w[0], icon: icon };
+  }
+  function hhmm(iso) { return iso ? iso.slice(11, 16) : '--:--'; }
+
+  function loadWeather() {
+    var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + CONFIG.home.lat + '&longitude=' + CONFIG.home.lon +
+      '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset' +
+      '&timezone=' + encodeURIComponent(CONFIG.home.tz) + '&wind_speed_unit=mph&forecast_days=5';
+    getJson(u).then(renderWeather).catch(function (e) {
+      $('wLabel').textContent = 'Weather \u00b7 ' + CONFIG.home.label;
+      if (!$('wBody').getAttribute('data-ok')) $('wBody').innerHTML = '<div class="main-sub err">Weather unavailable (' + esc(e.message) + '). Will retry.</div>';
+    });
+  }
+  function renderWeather(j) {
+    var c = j.current, d = j.daily;
+    var now = wx(c.weather_code, c.is_day);
+    $('wLabel').textContent = 'Weather \u00b7 ' + CONFIG.home.label;
+    var html = '<div class="w-now"><div class="w-icon">' + now.icon + '</div><div><div class="w-temp">' + Math.round(c.temperature_2m) + '\u00b0C</div>' +
+      '<div class="w-desc">' + esc(now.text) + '</div></div></div>' +
+      '<div class="w-meta">Feels like ' + Math.round(c.apparent_temperature) + '\u00b0 \u00b7 Wind ' + Math.round(c.wind_speed_10m) + ' mph<br>' +
+      'Sunrise ' + hhmm(d.sunrise[0]) + ' \u00b7 Sunset ' + hhmm(d.sunset[0]) + '</div><div class="w-days">';
+    for (var i = 0; i < d.time.length; i++) {
+      var dt = new Date(d.time[i] + 'T12:00:00Z');
+      var name = i === 0 ? 'Today' : dt.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' });
+      var w = wx(d.weather_code[i], 1);
+      var pr = d.precipitation_probability_max ? d.precipitation_probability_max[i] : null;
+      html += '<div class="w-day"><div class="d">' + name + '</div><div class="i">' + w.icon + '</div><div class="p">' + (pr === null || pr === undefined ? '' : '\uD83D\uDCA7' + pr + '%') + '</div>' +
+        '<div class="t">' + Math.round(d.temperature_2m_max[i]) + '\u00b0 <span>' + Math.round(d.temperature_2m_min[i]) + '\u00b0</span></div></div>';
+    }
+    html += '</div>';
+    $('wBody').innerHTML = html;
+    $('wBody').setAttribute('data-ok', '1');
+    $('wBody').style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0';
+  }
+
+  /* ---------- BBC news (RSS, via free rss2json; fallback proxy) ---------- */
+  var feedIdx = 0, cache = {};
+  function stripHtml(s) {
+    try { return new DOMParser().parseFromString(s || '', 'text/html').body.textContent || ''; } catch (e) { return String(s || '').replace(/<[^>]+>/g, ''); }
+  }
+  function parseDate(s) {
+    if (!s) return null;
+    if (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(s)) return new Date(s.replace(' ', 'T') + 'Z');
+    var d = new Date(s); return isNaN(d.getTime()) ? null : d;
+  }
+  function ago(d) {
+    if (!d) return '';
+    var m = Math.round((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    var h = Math.round(m / 60);
+    return h < 24 ? h + 'h ago' : Math.round(h / 24) + 'd ago';
+  }
+  function viaRss2json(url) {
+    return getJson('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url)).then(function (j) {
+      if (j.status !== 'ok') throw new Error('rss2json ' + j.status);
+      return j.items.map(function (i) { return { title: stripHtml(i.title), desc: stripHtml(i.description), date: parseDate(i.pubDate), link: i.link }; });
+    });
+  }
+  function viaProxy(url) {
+    return getText('https://api.allorigins.win/raw?url=' + encodeURIComponent(url)).then(function (xml) {
+      var doc = new DOMParser().parseFromString(xml, 'text/xml');
+      var out = [], nodes = doc.getElementsByTagName('item');
+      function tx(n, tag) { var e = n.getElementsByTagName(tag)[0]; return e ? e.textContent : ''; }
+      for (var i = 0; i < nodes.length; i++) {
+        out.push({ title: stripHtml(tx(nodes[i], 'title')), desc: stripHtml(tx(nodes[i], 'description')), date: parseDate(tx(nodes[i], 'pubDate')), link: tx(nodes[i], 'link') });
+      }
+      if (!out.length) throw new Error('empty feed');
+      return out;
+    });
+  }
+  function loadFeed(idx, force) {
+    var f = CONFIG.feeds[idx], c = cache[idx];
+    if (c && !force && Date.now() - c.ts < CONFIG.newsEveryMin * 60000) { renderNews(idx); return; }
+    viaRss2json(f.url).catch(function () { return viaProxy(f.url); }).then(function (items) {
+      cache[idx] = { items: items, ts: Date.now(), at: stamp() };
+      if (idx === feedIdx) renderNews(idx);
+    }).catch(function (e) {
+      if (idx !== feedIdx) return;
+      if (c) { renderNews(idx, 'Couldn\u2019t refresh (' + e.message + ') \u2013 showing last copy'); }
+      else { $('newsList').innerHTML = '<div class="main-sub err">Headlines unavailable (' + esc(e.message) + '). Will retry.</div>'; }
+    });
+  }
+  function renderNews(idx, warn) {
+    var c = cache[idx];
+    $('newsList').innerHTML = c.items.slice(0, CONFIG.maxHeadlines).map(function (i) {
+      return '<a class="item" href="' + esc(i.link) + '" target="_blank" rel="noopener"><div class="h">' + esc(i.title) + '</div>' +
+        (i.desc ? '<div class="s">' + esc(i.desc) + '</div>' : '') + '<div class="a">' + esc(ago(i.date)) + '</div></a>';
+    }).join('');
+    $('status').innerHTML = warn ? '<span class="err">' + esc(warn) + '</span>' : 'Updated ' + c.at;
+  }
+  function buildTabs() {
+    $('tabs').innerHTML = CONFIG.feeds.map(function (f, i) {
+      return '<div class="tab' + (i === feedIdx ? ' on' : '') + '" data-i="' + i + '">' + esc(f.name) + '</div>';
+    }).join('');
+  }
+  $('tabs').addEventListener('click', function (e) {
+    var t = e.target; if (!t || !t.getAttribute('data-i')) return;
+    feedIdx = +t.getAttribute('data-i'); buildTabs();
+    if (cache[feedIdx]) renderNews(feedIdx); else $('newsList').innerHTML = '<div class="main-sub">Loading headlines&hellip;</div>';
+    loadFeed(feedIdx, false);
+  });
+
+  /* ---------- keep the screen on / fullscreen ---------- */
+  function wake() {
+    try {
+      if (navigator.wakeLock && document.visibilityState === 'visible') navigator.wakeLock.request('screen').catch(function () {});
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', wake);
+  document.addEventListener('click', wake);
+  $('clock').addEventListener('dblclick', function () {
+    try {
+      var el = document.documentElement;
+      if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+      else { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
+    } catch (e) {}
+  });
+
+  /* ---------- go ---------- */
+  buildTabs();
+  tick();
+  setInterval(tick, 1000);
+  loadWeather();
+  setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
+  loadFeed(feedIdx, true);
+  setInterval(function () { loadFeed(feedIdx, true); }, CONFIG.newsEveryMin * 60000);
+  wake();
+})();
+</script>
+</body>
+</html>
