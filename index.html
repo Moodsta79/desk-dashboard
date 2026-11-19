@@ -56,8 +56,13 @@
   .w-day .t { width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
   .w-day .t span { color: #7d8a99; }
 
-  .cal-head { display: flex; justify-content: space-between; align-items: baseline; }
-  .cal-title { font-size: 20px; font-weight: 500; }
+  .cal-head { display: flex; justify-content: space-between; align-items: center; }
+  .cal-nav { display: flex; align-items: center; }
+  .cal-title { font-size: 17px; font-size: clamp(15px, 1.5vw, 19px); font-weight: 500; margin: 0 8px; min-width: 7.2em; text-align: center; white-space: nowrap; }
+  .cbtn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid #243041; background: #1a2230; color: #e8eef5; font-size: 24px; line-height: 1; padding: 0 0 4px; cursor: pointer; }
+  .cbtn:active { background: #243041; }
+  .cal-week { white-space: nowrap; }
+  .cal-week.back { color: #f5b942; border: 1px solid #f5b942; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
   .cal-week { font-size: 13px; color: #7d8a99; }
   table.cal { width: 100%; border-collapse: collapse; margin-top: 8px; flex: 1; table-layout: fixed; }
   table.cal th { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: #7d8a99; text-align: center; padding: 2px 0 6px; }
@@ -70,7 +75,9 @@
   .tabs { display: flex; flex-wrap: wrap; margin-bottom: 6px; }
   .tab { font-size: 12px; padding: 5px 11px; margin-right: 6px; margin-bottom: 4px; border-radius: 999px; border: 1px solid #1d2733; color: #9aa7b6; cursor: pointer; }
   .tab.on { background: #bb1919; border-color: #bb1919; color: #fff; }
-  .news-list { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  .news-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; position: relative; }
+  .news-list::-webkit-scrollbar { display: none; }
+  .news-list { scrollbar-width: none; }
   .item { display: block; padding: 10px 0; border-top: 1px solid #1d2733; color: inherit; text-decoration: none; }
   .item:first-child { border-top: 0; padding-top: 2px; }
   .item .h { font-size: 17px; font-size: clamp(15px, 1.5vw, 22px); font-weight: 600; line-height: 1.25; }
@@ -126,7 +133,7 @@
   </section>
 
   <section class="card" id="cal">
-    <div class="cal-head"><div class="cal-title" id="calTitle"></div><div class="cal-week" id="calWeek"></div></div>
+    <div class="cal-head"><div class="cal-nav"><button class="cbtn" id="calPrev" aria-label="Previous month">&#8249;</button><div class="cal-title" id="calTitle"></div><button class="cbtn" id="calNext" aria-label="Next month">&#8250;</button></div><div class="cal-week" id="calWeek"></div></div>
     <div id="calBody" style="flex:1;display:flex;flex-direction:column"></div>
   </section>
 
@@ -166,7 +173,7 @@
       { label: 'Watch BBC iPlayer', url: 'https://www.bbc.co.uk/iplayer/live/bbcnews' }
     ],
     watchNote: 'BBC News live \u00b7 TV licence needed',
-    maxHeadlines: 8,
+    maxHeadlines: 20,
     weatherEveryMin: 30,
     newsEveryMin: 10,
     nightFromHour: 22,   // screen dims from this hour (home time)...
@@ -245,21 +252,28 @@
   }
 
   /* ---------- calendar ---------- */
+  var calOffset = 0, calToday = null, calTimer = null;
   function renderCalendar(h) {
-    var first = new Date(Date.UTC(h.y, h.m - 1, 1));
+    calToday = h;
+    var vm = h.m - 1 + calOffset;
+    var vy = h.y + Math.floor(vm / 12);
+    vm = ((vm % 12) + 12) % 12;
+    var first = new Date(Date.UTC(vy, vm, 1));
     var lead = (first.getUTCDay() + 6) % 7;
-    var daysIn = new Date(Date.UTC(h.y, h.m, 0)).getUTCDate();
+    var daysIn = new Date(Date.UTC(vy, vm + 1, 0)).getUTCDate();
     var rows = Math.ceil((lead + daysIn) / 7);
     $('calTitle').textContent = first.toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
-    $('calWeek').textContent = 'Today is week ' + isoWeek(h.y, h.m, h.d);
+    var wk = $('calWeek');
+    if (calOffset === 0) { wk.textContent = 'Week ' + isoWeek(h.y, h.m, h.d); wk.className = 'cal-week'; }
+    else { wk.textContent = 'Today'; wk.className = 'cal-week back'; }
     var html = '<table class="cal"><thead><tr><th class="wk">Wk</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead><tbody>';
     for (var r = 0; r < rows; r++) {
-      var mon = new Date(Date.UTC(h.y, h.m - 1, 1 - lead + 7 * r));
+      var mon = new Date(Date.UTC(vy, vm, 1 - lead + 7 * r));
       html += '<tr><td class="wk">' + isoWeek(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate()) + '</td>';
       for (var c = 0; c < 7; c++) {
-        var dt = new Date(Date.UTC(h.y, h.m - 1, 1 - lead + 7 * r + c));
-        var inMonth = dt.getUTCMonth() === h.m - 1;
-        var isToday = inMonth && dt.getUTCDate() === h.d;
+        var dt = new Date(Date.UTC(vy, vm, 1 - lead + 7 * r + c));
+        var inMonth = dt.getUTCMonth() === vm;
+        var isToday = calOffset === 0 && inMonth && dt.getUTCDate() === h.d;
         var cls = (!inMonth ? 'dim' : '') + (c >= 5 && inMonth ? ' wknd' : '') + (isToday ? ' today' : '');
         html += '<td class="' + cls + '"><span>' + dt.getUTCDate() + '</span></td>';
       }
@@ -268,6 +282,17 @@
     html += '</tbody></table>';
     $('calBody').innerHTML = html;
   }
+  function calMove(n) {
+    if (!calToday) return;
+    calOffset = n === 0 ? 0 : calOffset + n;
+    renderCalendar(calToday);
+    clearTimeout(calTimer);
+    if (calOffset !== 0) calTimer = setTimeout(function () { calOffset = 0; renderCalendar(calToday); }, 90000);  // drifts back to this month after 90s
+  }
+  $('calPrev').addEventListener('click', function () { calMove(-1); });
+  $('calNext').addEventListener('click', function () { calMove(1); });
+  $('calWeek').addEventListener('click', function () { if (calOffset !== 0) calMove(0); });
+  $('calTitle').addEventListener('click', function () { if (calOffset !== 0) calMove(0); });
 
   /* ---------- network helper ---------- */
   function getJson(url, ms) {
@@ -391,13 +416,16 @@
       else { $('newsList').innerHTML = '<div class="main-sub err">Headlines unavailable (' + esc(e.message) + '). Will retry.</div>'; }
     });
   }
+  var lastNewsIdx = -1;
   function renderNews(idx, warn) {
     var c = cache[idx];
+    var keep = (idx === lastNewsIdx) ? $('newsList').scrollTop : 0;
+    lastNewsIdx = idx;
     $('newsList').innerHTML = c.items.slice(0, CONFIG.maxHeadlines).map(function (i) {
       return '<a class="item" href="' + esc(i.link) + '" target="_blank" rel="noopener"><div class="h">' + esc(i.title) + '</div>' +
         (i.desc ? '<div class="s">' + esc(i.desc) + '</div>' : '') + '<div class="a">' + esc(ago(i.date)) + '</div></a>';
     }).join('');
-    fit($('newsList'));
+    $('newsList').scrollTop = keep;
     $('status').innerHTML = warn ? '<span class="err">' + esc(warn) + '</span>' : 'Updated ' + c.at;
   }
   function buildTabs() {
@@ -424,7 +452,7 @@
     }
   }
   function qs(sel) { return document.querySelector ? document.querySelector(sel) : null; }
-  function fitAll() { fit($('newsList')); }
+  function fitAll() {}
   var resizeT;
   window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(fitAll, 150); });
   window.addEventListener('load', function () { setTimeout(fitAll, 300); });
