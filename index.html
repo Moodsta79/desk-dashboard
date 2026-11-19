@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Desk">
 <meta name="theme-color" content="#0b0f14">
 <title>Desk Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: #0b0f14; color: #e8eef5;
@@ -19,7 +22,7 @@
     padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom));
     padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right));
     grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr);
-    grid-template-areas: "clock weather cal" "news video fav"; transition: filter 1.5s; }
+    grid-template-areas: "clock weather cal" "news news watch"; transition: filter 1.5s; }
   body.night .wrap { filter: brightness(0.38); }
   .card { background: #121821; border: 1px solid #1d2733; border-radius: 18px; padding: 18px 22px; min-height: 0; overflow: hidden; position: relative; }
   .label { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #7d8a99; margin-bottom: 8px; }
@@ -27,8 +30,7 @@
   #weather { grid-area: weather; display: flex; flex-direction: column; }
   #cal { grid-area: cal; display: flex; flex-direction: column; }
   #news { grid-area: news; display: flex; flex-direction: column; }
-  #video { grid-area: video; display: flex; flex-direction: column; }
-  #fav { grid-area: fav; display: flex; flex-direction: column; }
+  #watch { grid-area: watch; display: flex; flex-direction: column; }
 
   .main-time { font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.02em;
     font-size: 8vw; font-size: clamp(48px, min(8.5vw, 14vh), 150px); }
@@ -92,14 +94,14 @@
   .vtext span { color: #7d8a99; font-size: 12px; }
   .vrow { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; min-height: 16px; }
   .vlive { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
-  .lbtn { display: flex; align-items: center; padding: 14px 16px; margin-bottom: 10px; border-radius: 14px; background: #1a2230; border: 1px solid #243041; color: #e8eef5; text-decoration: none; font-size: 16px; font-weight: 600; }
+  .lbtn { display: flex; align-items: center; padding: 18px 18px; margin-bottom: 12px; border-radius: 16px; background: #1a2230; border: 1px solid #243041; color: #e8eef5; text-decoration: none; font-size: 18px; font-size: clamp(16px, 1.6vw, 22px); font-weight: 600; }
   .lbtn .li { width: 36px; height: 36px; border-radius: 50%; background: #bb1919; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 14px; padding-left: 2px; flex: none; }
   .vrow a, .vrow .stop { color: #9aa7b6; text-decoration: none; cursor: pointer; }
 
   @media (max-aspect-ratio: 1/1) {
     body { overflow: auto; }
     .wrap { height: auto; min-height: 100vh; grid-template-columns: 1fr 1fr; grid-template-rows: auto;
-      grid-template-areas: "clock clock" "weather cal" "news news" "video video" "fav fav"; }
+      grid-template-areas: "clock clock" "weather cal" "news news" "watch watch"; }
     .vstage { min-height: 200px; }
     .main-time { font-size: 20vw; }
     .item .h { font-size: 18px; }
@@ -135,17 +137,10 @@
     <div class="status" id="status"></div>
   </section>
 
-  <section class="card" id="video">
-    <div class="label" id="vLabel">Video</div>
-    <div class="tabs" id="vtabs"></div>
-    <div class="vbody" id="vBody"><div class="main-sub">Loading videos&hellip;</div></div>
-    <div class="status" id="vStatus"></div>
-  </section>
-
-  <section class="card" id="fav">
-    <div class="label">YouTube favourites</div>
-    <div class="tabs" id="favTabs"></div>
-    <div class="vbody" id="favBody"><div class="main-sub">Loading videos&hellip;</div></div>
+  <section class="card" id="watch">
+    <div class="label">Watch live</div>
+    <div class="vlive" id="watchBtns"></div>
+    <div class="status" id="watchNote"></div>
   </section>
 </div>
 
@@ -166,14 +161,12 @@
       { name: 'Business',    url: 'https://feeds.bbci.co.uk/news/business/rss.xml' },
       { name: 'Tech',        url: 'https://feeds.bbci.co.uk/news/technology/rss.xml' }
     ],
-    youtube: {
-      channels: [ { name: 'BBC News', id: 'UC16niRr50-MSBwiO3YDb3RA', handle: '@bbcnews' } ],  // add more channels here
-      maxVideos: 8
-    },
-    favourites: [   // your favourite channels: add more lines like this one (name, channel id, handle)
-      { name: 'GoonzQuad', id: 'UCwO_xoYm2vjhu4kZSxFO5mA', handle: '@goonzquad' }
+    watch: [   // the buttons on the right-hand tile
+      { label: 'Watch YouTube',     url: 'https://www.youtube.com/@bbcnews/live' },
+      { label: 'Watch BBC iPlayer', url: 'https://www.bbc.co.uk/iplayer/live/bbcnews' }
     ],
-    maxHeadlines: 7,
+    watchNote: 'BBC News live \u00b7 TV licence needed',
+    maxHeadlines: 8,
     weatherEveryMin: 30,
     newsEveryMin: 10,
     nightFromHour: 22,   // screen dims from this hour (home time)...
@@ -247,7 +240,6 @@
       ? (h.h >= CONFIG.nightFromHour || h.h < CONFIG.nightToHour)
       : (h.h >= CONFIG.nightFromHour && h.h < CONFIG.nightToHour);
     document.body.className = night ? 'night' : '';
-    if (night && livePlaying) { livePlaying = false; vTab = 'latest'; buildVTabs(); renderVideo(); }
     // Fresh start each night keeps a long-running tablet tidy
     if (h.h === 3 && h.mi === 0 && h.s === 0) { try { location.reload(); } catch (e) {} }
   }
@@ -432,124 +424,18 @@
     }
   }
   function qs(sel) { return document.querySelector ? document.querySelector(sel) : null; }
-  function fitAll() { fit($('newsList')); fit(qs('#vBody .vlist')); fit(qs('#favBody .vlist')); }
+  function fitAll() { fit($('newsList')); }
   var resizeT;
   window.addEventListener('resize', function () { clearTimeout(resizeT); resizeT = setTimeout(fitAll, 150); });
   window.addEventListener('load', function () { setTimeout(fitAll, 300); });
   setInterval(fitAll, 8000);
 
-  /* ---------- video: latest clips + live player (sound off) ---------- */
-  var yt = CONFIG.youtube, vTab = 'latest', vCache = null, livePlaying = false;
-  var VTABS = [['latest', 'Latest'], ['live', 'Live']];
-  $('vLabel').textContent = 'Video · ' + yt.channels.map(function (c) { return c.name; }).join(', ');
-  function buildVTabs() {
-    $('vtabs').innerHTML = VTABS.map(function (t) {
-      return '<div class="tab' + (t[0] === vTab ? ' on' : '') + '" data-v="' + t[0] + '">' + t[1] + '</div>';
+  /* ---------- watch-live buttons ---------- */
+  function buildWatch() {
+    $('watchBtns').innerHTML = CONFIG.watch.map(function (w) {
+      return '<a class="lbtn" href="' + esc(w.url) + '" target="_blank" rel="noopener"><span class="li">\u25B6</span><span>' + esc(w.label) + '</span></a>';
     }).join('');
-  }
-  $('vtabs').addEventListener('click', function (e) {
-    var v = e.target && e.target.getAttribute ? e.target.getAttribute('data-v') : null;
-    if (!v) return;
-    vTab = v; livePlaying = false; buildVTabs(); renderVideo();
-  });
-  function renderVideo() { if (vTab === 'live') renderLive(); else renderLatest(); }
-
-  function renderLive() {
-    // BBC doesn't allow its live stream to be embedded in other pages, so these open it directly.
-    var ch = yt.channels[0];
-    $('vStatus').textContent = 'Opens in YouTube or iPlayer · live TV needs a TV licence';
-    $('vBody').innerHTML = '<div class="vlive">' +
-      '<a class="lbtn" href="https://www.youtube.com/' + esc(ch.handle) + '/live" target="_blank" rel="noopener"><span class="li">▶</span><span>Watch live on YouTube</span></a>' +
-      '<a class="lbtn" href="https://www.bbc.co.uk/iplayer/live/bbcnews" target="_blank" rel="noopener"><span class="li">▶</span><span>Watch live on BBC iPlayer</span></a>' +
-      '</div>';
-  }
-
-  function ytId(link) {
-    var m = /[?&]v=([\w-]{11})/.exec(link || '') || /shorts\/([\w-]{11})/.exec(link || '');
-    return m ? m[1] : '';
-  }
-  function ytViaProxy(url) {
-    return getText('https://api.allorigins.win/raw?url=' + encodeURIComponent(url)).then(function (xml) {
-      var doc = new DOMParser().parseFromString(xml, 'text/xml');
-      var nodes = doc.getElementsByTagName('entry'), out = [];
-      function tx(n, tag) { var e = n.getElementsByTagName(tag)[0]; return e ? e.textContent : ''; }
-      for (var i = 0; i < nodes.length; i++) {
-        var l = nodes[i].getElementsByTagName('link')[0];
-        out.push({ title: stripHtml(tx(nodes[i], 'title')), date: parseDate(tx(nodes[i], 'published')), link: l ? l.getAttribute('href') : '' });
-      }
-      if (!out.length) throw new Error('empty feed');
-      return out;
-    });
-  }
-  function loadVideos() {
-    var all = [];
-    Promise.all(yt.channels.map(function (ch) {
-      var u = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + encodeURIComponent(ch.id);
-      return viaRss2json(u).catch(function () { return ytViaProxy(u); }).then(function (items) {
-        items.forEach(function (i) { i.channel = ch.name; all.push(i); });
-      }, function () {});
-    })).then(function () {
-      if (all.length) {
-        all.sort(function (a, b) { return (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0); });
-        vCache = { items: all.slice(0, yt.maxVideos), at: stamp() };
-      }
-      if (vTab === 'latest') renderLatest(all.length ? '' : 'Couldn’t load videos – will retry');
-    });
-  }
-  function videoItemsHtml(items) {
-    return items.map(function (i) {
-      var id = ytId(i.link);
-      return '<a class="vitem" href="' + esc(i.link) + '" target="_blank" rel="noopener">' +
-        (id ? '<img src="https://i.ytimg.com/vi/' + id + '/mqdefault.jpg" alt="">' : '') +
-        '<div><div class="vt">' + esc(i.title) + '</div><div class="va">' + esc(i.channel) + ' \u00b7 ' + esc(ago(i.date)) + '</div></div></a>';
-    }).join('');
-  }
-  function renderLatest(msg) {
-    if (!vCache) {
-      $('vBody').innerHTML = '<div class="main-sub' + (msg ? ' err' : '') + '">' + esc(msg || 'Loading videos…') + '</div>';
-      $('vStatus').textContent = '';
-      return;
-    }
-    $('vBody').innerHTML = '<div class="vlist">' + videoItemsHtml(vCache.items) + '</div>';
-    fit(qs('#vBody .vlist'));
-    $('vStatus').innerHTML = msg ? '<span class="err">' + esc(msg) + '</span>' : 'Updated ' + vCache.at;
-  }
-
-  /* ---------- YouTube favourites panel ---------- */
-  var favIdx = 0, favCache = {};
-  function ytFeed(ch) { return 'https://www.youtube.com/feeds/videos.xml?channel_id=' + encodeURIComponent(ch.id); }
-  function buildFavTabs() {
-    $('favTabs').innerHTML = CONFIG.favourites.map(function (c, i) {
-      return '<div class="tab' + (i === favIdx ? ' on' : '') + '" data-f="' + i + '">' + esc(c.name) + '</div>';
-    }).join('');
-  }
-  $('favTabs').addEventListener('click', function (e) {
-    var f = e.target && e.target.getAttribute ? e.target.getAttribute('data-f') : null;
-    if (f === null || f === undefined) return;
-    favIdx = +f; buildFavTabs(); renderFav(); loadFav(favIdx, false);
-  });
-  function loadFav(idx, force) {
-    var ch = CONFIG.favourites[idx], c = favCache[idx];
-    if (c && !force && Date.now() - c.ts < 15 * 60000) { renderFav(); return; }
-    var u = ytFeed(ch);
-    viaRss2json(u).catch(function () { return ytViaProxy(u); }).then(function (items) {
-      items.forEach(function (i) { i.channel = ch.name; });
-      favCache[idx] = { items: items.slice(0, 8), ts: Date.now(), at: stamp() };
-      if (idx === favIdx) renderFav();
-    }).catch(function (e) {
-      if (idx === favIdx) renderFav('Couldn’t load videos (' + e.message + ') – will retry');
-    });
-  }
-  function renderFav(msg) {
-    var ch = CONFIG.favourites[favIdx], c = favCache[favIdx];
-    var link = '<a href="https://www.youtube.com/' + esc(ch.handle) + '" target="_blank" rel="noopener">Open channel</a>';
-    if (!c) {
-      $('favBody').innerHTML = '<div class="main-sub' + (msg ? ' err' : '') + '">' + esc(msg || 'Loading videos…') + '</div>';
-      return;
-    }
-    $('favBody').innerHTML = '<div class="vlist">' + videoItemsHtml(c.items) + '</div>' +
-      '<div class="vrow"><span class="' + (msg ? 'err' : '') + '">' + esc(msg || ('Updated ' + c.at)) + '</span>' + link + '</div>';
-    fit(qs('#favBody .vlist'));
+    $('watchNote').textContent = CONFIG.watchNote || '';
   }
 
   /* ---------- keep the screen on / fullscreen ---------- */
@@ -576,14 +462,8 @@
   setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
   loadFeed(feedIdx, true);
   setInterval(function () { loadFeed(feedIdx, true); }, CONFIG.newsEveryMin * 60000);
-  buildFavTabs();
-  renderFav();
-  loadFav(favIdx, true);
-  setInterval(function () { loadFav(favIdx, true); }, 15 * 60000);
-  buildVTabs();
-  renderVideo();
-  loadVideos();
-  setInterval(loadVideos, 15 * 60000);
+  buildWatch();
+  try { if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); } catch (e) {}
   wake();
 })();
 </script>
