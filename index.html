@@ -94,6 +94,9 @@
   .news-list { scrollbar-width: none; }
   .item { display: block; padding: 10px 0; border-top: 1px solid #1d2733; color: inherit; text-decoration: none; }
   .item:first-child { border-top: 0; padding-top: 2px; }
+  .item.hasimg { display: flex; align-items: flex-start; }
+  .item img { width: 132px; height: 74px; object-fit: cover; border-radius: 8px; background: #1d2733; margin-right: 14px; flex: none; }
+  .item .txt { flex: 1; min-width: 0; }
   .item .h { font-size: 17px; font-size: clamp(15px, 1.5vw, 22px); font-weight: 600; line-height: 1.25; }
   .item .s { font-size: 13px; color: #8d99a8; margin-top: 3px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .item .a { font-size: 11px; color: #5d6a7a; margin-top: 3px; }
@@ -411,7 +414,10 @@
   function viaRss2json(url) {
     return getJson('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url)).then(function (j) {
       if (j.status !== 'ok') throw new Error('rss2json ' + j.status);
-      return j.items.map(function (i) { return { title: stripHtml(i.title), desc: stripHtml(i.description), date: parseDate(i.pubDate), link: i.link }; });
+      return j.items.map(function (i) {
+        var img = i.thumbnail || (i.enclosure && (i.enclosure.thumbnail || (/image/.test(i.enclosure.type || '') ? i.enclosure.link : ''))) || '';
+        return { title: stripHtml(i.title), desc: stripHtml(i.description), date: parseDate(i.pubDate), link: i.link, img: img };
+      });
     });
   }
   function viaProxy(url) {
@@ -420,7 +426,8 @@
       var out = [], nodes = doc.getElementsByTagName('item');
       function tx(n, tag) { var e = n.getElementsByTagName(tag)[0]; return e ? e.textContent : ''; }
       for (var i = 0; i < nodes.length; i++) {
-        out.push({ title: stripHtml(tx(nodes[i], 'title')), desc: stripHtml(tx(nodes[i], 'description')), date: parseDate(tx(nodes[i], 'pubDate')), link: tx(nodes[i], 'link') });
+        var th = nodes[i].getElementsByTagName('media:thumbnail')[0];
+        out.push({ title: stripHtml(tx(nodes[i], 'title')), desc: stripHtml(tx(nodes[i], 'description')), date: parseDate(tx(nodes[i], 'pubDate')), link: tx(nodes[i], 'link'), img: th ? th.getAttribute('url') : '' });
       }
       if (!out.length) throw new Error('empty feed');
       return out;
@@ -444,8 +451,9 @@
     var keep = (idx === lastNewsIdx) ? $('newsList').scrollTop : 0;
     lastNewsIdx = idx;
     $('newsList').innerHTML = c.items.slice(0, CONFIG.maxHeadlines).map(function (i) {
-      return '<a class="item" href="' + esc(i.link) + '" target="_blank" rel="noopener"><div class="h">' + esc(i.title) + '</div>' +
-        (i.desc ? '<div class="s">' + esc(i.desc) + '</div>' : '') + '<div class="a">' + esc(ago(i.date)) + '</div></a>';
+      var img = i.img && /^https:\/\//.test(i.img) ? '<img src="' + esc(i.img) + '" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' : '';
+      return '<a class="item' + (img ? ' hasimg' : '') + '" href="' + esc(i.link) + '" target="_blank" rel="noopener">' + img + '<div class="txt"><div class="h">' + esc(i.title) + '</div>' +
+        (i.desc ? '<div class="s">' + esc(i.desc) + '</div>' : '') + '<div class="a">' + esc(ago(i.date)) + '</div></div></a>';
     }).join('');
     $('newsList').scrollTop = keep;
     $('status').innerHTML = warn ? '<span class="err">' + esc(warn) + '</span>' : 'Updated ' + c.at;
