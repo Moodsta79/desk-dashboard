@@ -22,7 +22,7 @@
     padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom));
     padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right));
     grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 0.85fr) minmax(0, 1.15fr);
-    grid-template-areas: "clock weather cal" "news news watch"; transition: filter 1.5s; }
+    grid-template-areas: "clock weather cal" "news news right"; transition: filter 1.5s; }
   body.night .wrap { filter: brightness(0.38); }
   .card { background: #121821; border: 1px solid #1d2733; border-radius: 18px; padding: 18px 22px; min-height: 0; overflow: hidden; position: relative; }
   .label { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #7d8a99; margin-bottom: 8px; }
@@ -30,7 +30,21 @@
   #weather { grid-area: weather; display: flex; flex-direction: column; }
   #cal { grid-area: cal; display: flex; flex-direction: column; }
   #news { grid-area: news; display: flex; flex-direction: column; }
-  #watch { grid-area: watch; display: flex; flex-direction: column; }
+  #rcol { grid-area: right; display: flex; flex-direction: column; min-height: 0; }
+  #watch { flex: none; display: flex; flex-direction: column; padding: 14px 16px; }
+  #watch .vlive { flex: none; }
+  #watch .lbtn { padding: 10px 12px; margin-bottom: 8px; border-radius: 14px; font-size: 15px; }
+  #watch .lbtn:last-child { margin-bottom: 0; }
+  #watch .lbtn .li { width: 30px; height: 30px; margin-right: 10px; }
+  #watchNote:empty { display: none; }
+  #pic { flex: 1; min-height: 0; margin-top: 16px; padding: 0; position: relative; }
+  .piclink { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; color: inherit; text-decoration: none; }
+  .picbg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #1a2230 center / cover no-repeat; opacity: 0; transition: opacity 1.2s; }
+  .picbg.on { opacity: 1; }
+  .piccap { position: absolute; left: 0; right: 0; bottom: 0; padding: 36px 16px 12px; background: linear-gradient(to top, rgba(5, 8, 12, 0.9), rgba(5, 8, 12, 0)); }
+  .pict { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #f5b942; }
+  .picd { font-size: 13px; line-height: 1.3; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .picc { font-size: 10px; color: #8d99a8; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .main-time { font-weight: 200; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -0.02em;
     font-size: 8vw; font-size: clamp(48px, min(8.5vw, 14vh), 150px); }
@@ -108,7 +122,8 @@
   @media (max-aspect-ratio: 1/1) {
     body { overflow: auto; }
     .wrap { height: auto; min-height: 100vh; grid-template-columns: 1fr 1fr; grid-template-rows: auto;
-      grid-template-areas: "clock clock" "weather cal" "news news" "watch watch"; }
+      grid-template-areas: "clock clock" "weather cal" "news news" "right right"; }
+    #pic { min-height: 260px; }
     .vstage { min-height: 200px; }
     .main-time { font-size: 20vw; }
     .item .h { font-size: 18px; }
@@ -144,11 +159,18 @@
     <div class="status" id="status"></div>
   </section>
 
-  <section class="card" id="watch">
-    <div class="label">Watch live</div>
-    <div class="vlive" id="watchBtns"></div>
-    <div class="status" id="watchNote"></div>
-  </section>
+  <div id="rcol">
+    <section class="card" id="watch">
+      <div class="vlive" id="watchBtns"></div>
+      <div class="status" id="watchNote"></div>
+    </section>
+    <section class="card" id="pic">
+      <a class="piclink" id="picLink" href="https://commons.wikimedia.org/wiki/Commons:Picture_of_the_day" target="_blank" rel="noopener">
+        <div class="picbg" id="picBg"></div>
+        <div class="piccap"><div class="pict">Picture of the day</div><div class="picd" id="picDesc">Loading&hellip;</div><div class="picc" id="picCredit"></div></div>
+      </a>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -172,7 +194,7 @@
       { label: 'Watch YouTube',     url: 'https://www.youtube.com/@bbcnews/live' },
       { label: 'Watch BBC iPlayer', url: 'https://www.bbc.co.uk/iplayer/live/bbcnews' }
     ],
-    watchNote: 'BBC News live \u00b7 TV licence needed',
+    watchNote: '',
     maxHeadlines: 20,
     weatherEveryMin: 30,
     newsEveryMin: 10,
@@ -466,6 +488,39 @@
     $('watchNote').textContent = CONFIG.watchNote || '';
   }
 
+  /* ---------- picture of the day (Wikimedia Commons, via Wikipedia's free feed) ---------- */
+  var picShown = false;
+  function setPicBg(u) { $('picBg').style.backgroundImage = 'url("' + u + '")'; $('picBg').className = 'picbg on'; picShown = true; }
+  function showPicture(src, im) {
+    var big = src.replace(/\/(\d+)px-/, '/960px-');
+    var a = new Image();
+    a.onload = function () { setPicBg(big); };
+    a.onerror = function () { var b = new Image(); b.onload = function () { setPicBg(src); }; b.src = src; };
+    a.src = big;
+    var desc = (im.description && im.description.text) || '';
+    if (!desc && im.title) desc = String(im.title).replace(/^File:/, '').replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
+    if (desc.length > 170) desc = desc.slice(0, 167) + '…';
+    $('picDesc').textContent = desc;
+    var who = im.artist && im.artist.text ? String(im.artist.text).replace(/\s+/g, ' ').trim() : '';
+    $('picCredit').textContent = (who ? who + ' · ' : '') + 'Wikimedia Commons';
+    $('picLink').href = im.file_page || ('https://commons.wikimedia.org/wiki/' + encodeURIComponent(im.title || ''));
+  }
+  function loadPicture(back) {
+    back = back || 0;
+    var h = parts(CONFIG.home.tz, new Date());
+    var d = new Date(Date.UTC(h.y, h.m - 1, h.d - back));
+    var u = 'https://en.wikipedia.org/api/rest_v1/feed/featured/' + d.getUTCFullYear() + '/' + pad(d.getUTCMonth() + 1) + '/' + pad(d.getUTCDate());
+    getJson(u, 15000).then(function (j) {
+      var im = j && j.image;
+      var src = im && ((im.thumbnail && im.thumbnail.source) || (im.image && im.image.source));
+      if (!src) throw new Error('no image');
+      showPicture(src, im);
+    }).catch(function () {
+      if (back < 2) loadPicture(back + 1);
+      else if (!picShown) $('picDesc').textContent = 'Picture unavailable – will retry';
+    });
+  }
+
   /* ---------- keep the screen on / fullscreen ---------- */
   function wake() {
     try {
@@ -491,6 +546,8 @@
   loadFeed(feedIdx, true);
   setInterval(function () { loadFeed(feedIdx, true); }, CONFIG.newsEveryMin * 60000);
   buildWatch();
+  loadPicture(0);
+  setInterval(function () { loadPicture(0); }, 3 * 3600000);
   try { if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); } catch (e) {}
   wake();
 })();
