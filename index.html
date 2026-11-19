@@ -91,6 +91,9 @@
   .vtext { margin-top: 10px; font-size: 15px; text-align: center; }
   .vtext span { color: #7d8a99; font-size: 12px; }
   .vrow { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; min-height: 16px; }
+  .vlive { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+  .lbtn { display: flex; align-items: center; padding: 14px 16px; margin-bottom: 10px; border-radius: 14px; background: #1a2230; border: 1px solid #243041; color: #e8eef5; text-decoration: none; font-size: 16px; font-weight: 600; }
+  .lbtn .li { width: 36px; height: 36px; border-radius: 50%; background: #bb1919; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 14px; padding-left: 2px; flex: none; }
   .vrow a, .vrow .stop { color: #9aa7b6; text-decoration: none; cursor: pointer; }
 
   @media (max-aspect-ratio: 1/1) {
@@ -452,18 +455,13 @@
   function renderVideo() { if (vTab === 'live') renderLive(); else renderLatest(); }
 
   function renderLive() {
+    // BBC doesn't allow its live stream to be embedded in other pages, so these open it directly.
     var ch = yt.channels[0];
-    $('vStatus').textContent = 'If the player stays blank, tap Open in YouTube.';
-    $('vBody').innerHTML = '<div class="vstage" id="vstage"><div class="vplay" id="vplay"><div class="vbtn">▶</div>' +
-      '<div class="vtext">Watch ' + esc(ch.name) + ' live<br><span>Starts muted · tap to begin</span></div></div></div>' +
-      '<div class="vrow"><a href="https://www.youtube.com/' + esc(ch.handle) + '/live" target="_blank" rel="noopener">Open in YouTube</a><span class="stop" id="vstop"></span></div>';
-    $('vplay').addEventListener('click', function () {
-      livePlaying = true;
-      $('vstage').innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/live_stream?channel=' + encodeURIComponent(ch.id) +
-        '&autoplay=1&mute=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
-      $('vstop').textContent = 'Stop';
-      $('vstop').addEventListener('click', function () { livePlaying = false; renderLive(); });
-    });
+    $('vStatus').textContent = 'Opens in YouTube or iPlayer · live TV needs a TV licence';
+    $('vBody').innerHTML = '<div class="vlive">' +
+      '<a class="lbtn" href="https://www.youtube.com/' + esc(ch.handle) + '/live" target="_blank" rel="noopener"><span class="li">▶</span><span>Watch live on YouTube</span></a>' +
+      '<a class="lbtn" href="https://www.bbc.co.uk/iplayer/live/bbcnews" target="_blank" rel="noopener"><span class="li">▶</span><span>Watch live on BBC iPlayer</span></a>' +
+      '</div>';
   }
 
   function ytId(link) {
